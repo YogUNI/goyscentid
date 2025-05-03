@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>goyscent.id</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        input, select {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .summary-box {
+            background-color: #f2f2f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .nav-tabs {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+        .nav-tabs button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 17px;
+            color: black;
+        }
+        .nav-tabs button:hover {
+            background-color: #ddd;
+        }
+        .nav-tabs button.active {
+            background-color: #ccc;
+        }
+        .tab-content {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .sync-status {
+            margin-left: 10px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .synced {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .not-synced {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .syncing {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginSection" class="login-container">
+        <h2>Login</h2>
+        <div>
+            <label for="emailInput">Email:</label>
+            <input type="email" id="emailInput" placeholder="Email">
+        </div>
+        <div style="margin-top: 10px;">
+            <label for="passwordInput">Password:</label>
+            <input type="password" id="passwordInput" placeholder="Password">
+        </div>
+        <div style="margin-top: 15px;">
+            <button onclick="login()">Login</button>
+            <button onclick="register()">Register</button>
+        </div>
+        <p id="authMessage" style="color: red;"></p>
+    </div>
+
+    <div id="appContainer" class="container" style="display: none;">
+        <h1>Sistem Manajemen Keuangan goyscent.id</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="nav-tabs">
+                <button class="tablinks active" onclick="openTab(event, 'StockTab')">Stok Parfum</button>
+                <button class="tablinks" onclick="openTab(event, 'SalesTab')">Penjualan</button>
+                <button class="tablinks" onclick="openTab(event, 'ReportTab')">Laporan Keuangan</button>
+            </div>
+            <div>
+                <span id="syncStatus" class="sync-status synced">Tersinkronisasi</span>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <!-- Tab Stok Parfum -->
+        <div id="StockTab" class="tab-content" style="display: block;">
+            <div class="section">
+                <h2>Data Stok Parfum</h2>
+                <button onclick="showAddStockModal()">Tambah Parfum Baru</button>
+                <table id="parfumStockTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nama Parfum</th>
+                            <th>Volume (ml)</th>
+                            <th>Harga Modal</th>
+                            <th>Harga Jual Botol</th>
+                            <th>Harga Decant 5ml</th>
+                            <th>Harga Decant 10ml</th>
+                            <th>Stok Tersedia (ml)</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parfumStockBody">
+                        <!-- Data parfum akan ditampilkan di sini -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Tab Penjualan -->
+        <div id="SalesTab" class="tab-content">
+            <div class="section">
+                <h2>Catat Penjualan Baru</h2>
+                <div>
+                    <label for="salesDate">Tanggal:</label>
+                    <input type="date" id="salesDate" value="">
+                </div>
+                <div>
+                    <label for="salesParfum">Parfum:</label>
+                    <select id="salesParfum" onchange="updateSalesOptions()">
+                        <option value="">-- Pilih Parfum --</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="salesType">Tipe Penjualan:</label>
+                    <select id="salesType" onchange="updatePriceBasedOnType()">
+                        <option value="">-- Pilih Tipe --</option>
+                        <option value="full">Botol Penuh</option>
+                        <option value="decant5">Decant 5ml</option>
+                        <option value="decant10">Decant 10ml</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="salesQuantity">Jumlah:</label>
+                    <input type="number" id="salesQuantity" min="1" value="1" onchange="calculateSalesTotal()">
+                </div>
+                <div>
+                    <label for="salesPrice">Harga Satuan:</label>
+                    <input type="number" id="salesPrice" readonly>
+                </div>
+                <div>
+                    <label for="salesTotal">Total Harga:</label>
+                    <input type="number" id="salesTotal" readonly>
+                </div>
+                <button onclick="addSales()">Tambah Penjualan</button>
+                
+                <h2>Riwayat Penjualan</h2>
+                <table id="salesHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tanggal</th>
+                            <th>Nama Parfum</th>
+                            <th>Tipe</th>
+                            <th>Jumlah</th>
+                            <th>Harga Satuan</th>
+                            <th>Total</th>
+                            <th>Keuntungan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesHistoryBody">
+                        <!-- Data penjualan akan ditampilkan di sini -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Tab Laporan -->
+        <div id="ReportTab" class="tab-content">
+            <div class="section">
+                <h2>Laporan Keuangan</h2>
+                
+                <div>
+                    <label for="reportFilter">Filter Periode:</label>
+                    <select id="reportFilter" onchange="generateReport()">
+                        <option value="all">Semua Waktu</option>
+                        <option value="today">Hari Ini</option>
+                        <option value="week">7 Hari Terakhir</option>
+                        <option value="month">30 Hari Terakhir</option>
+                    </select>
+                </div>
+                
+                <div class="summary-box">
+                    <h3>Ringkasan</h3>
+                    <p>Total Penjualan: Rp <span id="totalSales">0</span></p>
+                    <p>Total Modal: Rp <span id="totalCost">0</span></p>
+                    <p>Total Keuntungan: Rp <span id="totalProfit">0</span></p>
+                    <p>Margin Keuntungan: <span id="profitMargin">0</span>%</p>
+                </div>
+                
+                <h3>Penjualan per Parfum</h3>
+                <table id="reportByParfumTable">
+                    <thead>
+                        <tr>
+                            <th>Nama Parfum</th>
+                            <th>Total Penjualan</th>
+                            <th>Total Modal</th>
+                            <th>Keuntungan</th>
+                            <th>Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportByParfumBody">
+                        <!-- Data laporan per parfum akan ditampilkan di sini -->
+                    </tbody>
+                </table>
+                
+                <h3>Penjualan per Tipe</h3>
+                <table id="reportByTypeTable">
+                    <thead>
+                        <tr>
+                            <th>Tipe Penjualan</th>
+                            <th>Jumlah Transaksi</th>
+                            <th>Total Penjualan</th>
+                            <th>Total Modal</th>
+                            <th>Keuntungan</th>
+                            <th>Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportByTypeBody">
+                        <!-- Data laporan per tipe akan ditampilkan di sini -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modal Tambah Parfum -->
+        <div id="addStockModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('addStockModal')">&times;</span>
+                <h2>Tambah Parfum Baru</h2>
+                <div>
+                    <label for="addParfumName">Nama Parfum:</label>
+                    <input type="text" id="addParfumName">
+                </div>
+                <div>
+                    <label for="addParfumVolume">Volume (ml):</label>
+                    <input type="number" id="addParfumVolume" min="1" value="100">
+                </div>
+                <div>
+                    <label for="addParfumCost">Harga Modal (Rp):</label>
+                    <input type="number" id="addParfumCost" min="0">
+                </div>
+                <div>
+                    <label for="addParfumFullPrice">Harga Jual Botol Penuh (Rp):</label>
+                    <input type="number" id="addParfumFullPrice" min="0">
+                </div>
+                <div>
+                    <label for="addParfumDecant5Price">Harga Decant 5ml (Rp):</label>
+                    <input type="number" id="addParfumDecant5Price" min="0">
+                </div>
+                <div>
+                    <label for="addParfumDecant10Price">Harga Decant 10ml (Rp):</label>
+                    <input type="number" id="addParfumDecant10Price" min="0">
+                </div>
+                <button onclick="addParfumStock()">Simpan</button>
+            </div>
+        </div>
+        
+        <!-- Modal Edit Parfum -->
+        <div id="editStockModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('editStockModal')">&times;</span>
+                <h2>Edit Parfum</h2>
+                <input type="hidden" id="editParfumId">
+                <div>
+                    <label for="editParfumName">Nama Parfum:</label>
+                    <input type="text" id="editParfumName">
+                </div>
+                <div>
+                    <label for="editParfumVolume">Volume (ml):</label>
+                    <input type="number" id="editParfumVolume" min="1">
+                </div>
+                <div>
+                    <label for="editParfumCost">Harga Modal (Rp):</label>
+                    <input type="number" id="editParfumCost" min="0">
+                </div>
+                <div>
+                    <label for="editParfumFullPrice">Harga Jual Botol Penuh (Rp):</label>
+                    <input type="number" id="editParfumFullPrice" min="0">
+                </div>
+                <div>
+                    <label for="editParfumDecant5Price">Harga Decant 5ml (Rp):</label>
+                    <input type="number" id="editParfumDecant5Price" min="0">
+                </div>
+                <div>
+                    <label for="editParfumDecant10Price">Harga Decant 10ml (Rp):</label>
+                    <input type="number" id="editParfumDecant10Price" min="0">
+                </div>
+                <div>
+                    <label for="editParfumStock">Stok Tersedia (ml):</label>
+                    <input type="number" id="editParfumStock" min="0">
+                </div>
+                <button onclick="updateParfumStock()">Simpan Perubahan</button>
+            </div>
+        </div>
+        
+        <!-- Modal Konfirmasi Hapus -->
+        <div id="deleteConfirmModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('deleteConfirmModal')">&times;</span>
+                <h2>Konfirmasi Hapus</h2>
+                <p id="deleteConfirmMessage"></p>
+                <input type="hidden" id="deleteItemId">
+                <input type="hidden" id="deleteItemType">
+                <button onclick="confirmDelete()">Ya, Hapus</button>
+                <button onclick="closeModal('deleteConfirmModal')">Batal</button>
+            </div>
+        </div>
+        
+        <script>
+            // Firebase configuration - ganti dengan konfigurasi Anda
+            const firebaseConfig = {
+                apiKey: "AIzaSyBS0_9jJt87ZjqyRpMVWsY4K-E9hj2nbJE",
+                authDomain: "goyscentid.firebaseapp.com",
+                projectId: "goyscentid",
+                storageBucket: "goyscentid.firebasestorage.app",
+                messagingSenderId: "173302729284",
+                appId: "1:173302729284:web:bde5ebe7275606d7020a11",
+                measurementId: "G-QWK71JJ0E9"
+            };
+            
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const auth = firebase.auth();
+            
+            // Data storage
+            let parfumStock = [];
+            let salesHistory = [];
+            let currentUser = null;
+            let isOnline = navigator.onLine;
+            let pendingChanges = false;
+            
+            // Check online status
+            window.addEventListener('online', () => {
+                isOnline = true;
+                if (pendingChanges) {
+                    syncDataToFirebase();
+                }
+                updateSyncStatus();
+            });
+            
+            window.addEventListener('offline', () => {
+                isOnline = false;
+                updateSyncStatus();
+            });
+            
+            // Initialize date input with today's date
+            document.addEventListener('DOMContentLoaded', function() {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('salesDate').value = today;
+                
+                // Check if user is already logged in
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        document.getElementById('loginSection').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'block';
+                        
+                        // Load data from Firebase
+                        loadDataFromFirebase();
+                    } else {
+                        document.getElementById('loginSection').style.display = 'block';
+                        document.getElementById('appContainer').style.display = 'none';
+                    }
+                });
+                
+                updateSyncStatus();
+            });
+            
+            // Authentication functions
+            function login() {
+                const email = document.getElementById('emailInput').value;
+                const password = document.getElementById('passwordInput').value;
+                
+                if (!email || !password) {
+                    document.getElementById('authMessage').innerText = 'Mohon lengkapi email dan password!';
+                    return;
+                }
+                
+                auth.signInWithEmailAndPassword(email, password)
+                    .catch(error => {
+                        document.getElementById('authMessage').innerText = error.message;
+                    });
+            }
+            
+            function register() {
+                const email = document.getElementById('emailInput').value;
+                const password = document.getElementById('passwordInput').value;
+                
+                if (!email || !password) {
+                    document.getElementById('authMessage').innerText = 'Mohon lengkapi email dan password!';
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    document.getElementById('authMessage').innerText = 'Password harus minimal 6 karakter!';
+                    return;
+                }
+                
+                auth.createUserWithEmailAndPassword(email, password)
+                    .catch(error => {
+                        document.getElementById('authMessage').innerText = error.message;
+                    });
+            }
+            
+            function logout() {
+                auth.signOut()
+                    .then(() => {
+                        document.getElementById('loginSection').style.display = 'block';
+                        document.getElementById('appContainer').style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Error saat logout:', error);
+                    });
+            }
+            
+            // Data persistence functions with Firebase integration
+            function saveData() {
+                // Simpan ke localStorage sebagai backup
+                localStorage.setItem('parfumStock', JSON.stringify(parfumStock));
+                localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
+                
+                // Sync ke Firebase jika online
+                if (isOnline && currentUser) {
+                    syncDataToFirebase();
+                } else {
+                    pendingChanges = true;
+                    updateSyncStatus();
+                }
+            }
+            
+            function syncDataToFirebase() {
+                if (!currentUser) return;
+                
+                updateSyncStatus('syncing');
+                
+                // Simpan data parfum
+                db.collection('users').doc(currentUser.uid).set({
+                    parfumStock: parfumStock,
+                    salesHistory: salesHistory,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    pendingChanges = false;
+                    updateSyncStatus('synced');
+                })
+                .catch(error => {
+                    console.error("Error writing document: ", error);
+                    pendingChanges = true;
+                    updateSyncStatus();
+                });
+            }
+            
+            function loadDataFromFirebase() {
+                if (!currentUser) return;
+                
+                updateSyncStatus('syncing');
+                
+                db.collection('users').doc(currentUser.uid).get()
+                    .then(doc => {
+                        if (doc.exists && doc.data()) {
+                            const data = doc.data();
+                            
+                            if (data.parfumStock) {
+                                parfumStock = data.parfumStock;
+                            } else {
+                                // Coba load dari localStorage jika tidak ada di Firebase
+                                loadDataFromLocalStorage();
+                            }
+                            
+                            if (data.salesHistory) {
+                                salesHistory = data.salesHistory;
+                            }
+                            
+                            // Update UI
+                            renderParfumStock();
+                            renderSalesHistory();
+                            updateSalesParfumDropdown();
+                            generateReport();
+                            
+                            updateSyncStatus('synced');
+                        } else {
+                            // Tidak ada data di Firebase, coba load dari localStorage
+                            loadDataFromLocalStorage();
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error getting document:", error);
+                        // Fallback ke localStorage
+                        loadDataFromLocalStorage();
+                    });
+            }
+            
+            function loadDataFromLocalStorage() {
+                const loadedStock = localStorage.getItem('parfumStock');
+                const loadedSales = localStorage.getItem('salesHistory');
+                
+                if (loadedStock) {
+                    parfumStock = JSON.parse(loadedStock);
+                }
+                
+                if (loadedSales) {
+                    salesHistory = JSON.parse(loadedSales);
+                }
+                
+                // Update UI
+                renderParfumStock();
+                renderSalesHistory();
+                updateSalesParfumDropdown();
+                generateReport();
+                
+                // Jika ada data di localStorage dan online, sync ke Firebase
+                if ((parfumStock.length > 0 || salesHistory.length > 0) && isOnline) {
+                    syncDataToFirebase();
+                } else {
+                    updateSyncStatus();
+                }
+            }
+            
+            function updateSyncStatus(status) {
+                const statusElem = document.getElementById('syncStatus');
+                
+                if (status === 'syncing') {
+                    statusElem.innerText = 'Sinkronisasi...';
+                    statusElem.className = 'sync-status syncing';
+                } else if (status === 'synced') {
+                    statusElem.innerText = 'Tersinkronisasi';
+                    statusElem.className = 'sync-status synced';
+                } else {
+                    if (!isOnline) {
+                        statusElem.innerText = 'Offline';
+                        statusElem.className = 'sync-status not-synced';
+                    } else if (pendingChanges) {
+                        statusElem.innerText = 'Perubahan belum tersimpan';
+                        statusElem.className = 'sync-status not-synced';
+                    } else {
+                        statusElem.innerText = 'Tersinkronisasi';
+                        statusElem.className = 'sync-status synced';
+                    }
+                }
+            }
+            
+            // Tab navigation functions
+            function openTab(evt, tabName) {
+                var i, tabcontent, tablinks;
+                tabcontent = document.getElementsByClassName("tab-content");
+                for (i = 0; i < tabcontent.length; i++) {
+                    tabcontent[i].style.display = "none";
+                }
+                tablinks = document.getElementsByClassName("tablinks");
+                for (i = 0; i < tablinks.length; i++) {
+                    tablinks[i].className = tablinks[i].className.replace(" active", "");
+                }
+                document.getElementById(tabName).style.display = "block";
+                evt.currentTarget.className += " active";
+                
+                // Update report if navigating to Report tab
+                if (tabName === 'ReportTab') {
+                    generateReport();
+                }
+            }
+            
+            // Modal functions
+            function showAddStockModal() {
+                document.getElementById('addStockModal').style.display = 'block';
+            }
+            
+            function showEditStockModal(id) {
+                const parfum = parfumStock.find(p => p.id === id);
+                if (parfum) {
+                    document.getElementById('editParfumId').value = parfum.id;
+                    document.getElementById('editParfumName').value = parfum.name;
+                    document.getElementById('editParfumVolume').value = parfum.volume;
+                    document.getElementById('editParfumCost').value = parfum.cost;
+                    document.getElementById('editParfumFullPrice').value = parfum.fullPrice;
+                    document.getElementById('editParfumDecant5Price').value = parfum.decant5Price;
+                    document.getElementById('editParfumDecant10Price').value = parfum.decant10Price;
+                    document.getElementById('editParfumStock').value = parfum.stock;
+                    
+                    document.getElementById('editStockModal').style.display = 'block';
+                }
+            }
+            
+            function showDeleteConfirm(id, type) {
+                document.getElementById('deleteItemId').value = id;
+                document.getElementById('deleteItemType').value = type;
+                
+                let message = '';
+                if (type === 'parfum') {
+                    const parfum = parfumStock.find(p => p.id === id);
+                    message = `Apakah Anda yakin ingin menghapus parfum "${parfum.name}"?`;
+                } else if (type === 'sale') {
+                    const sale = salesHistory.find(s => s.id === id);
+                    message = `Apakah Anda yakin ingin menghapus transaksi penjualan #${sale.id}?`;
+                }
+                
+                document.getElementById('deleteConfirmMessage').innerText = message;
+                document.getElementById('deleteConfirmModal').style.display = 'block';
+            }
+            
+            function closeModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+            }
+            
+            // Parfum stock functions
+            function addParfumStock() {
+                const name = document.getElementById('addParfumName').value;
+                const volume = parseFloat(document.getElementById('addParfumVolume').value);
+                const cost = parseFloat(document.getElementById('addParfumCost').value);
+                const fullPrice = parseFloat(document.getElementById('addParfumFullPrice').value);
+                const decant5Price = parseFloat(document.getElementById('addParfumDecant5Price').value);
+                const decant10Price = parseFloat(document.getElementById('addParfumDecant10Price').value);
+                
+                if (!name || isNaN(volume) || isNaN(cost) || isNaN(fullPrice)) {
+                    alert('Mohon lengkapi data parfum!');
+                    return;
+                }
+                
+                const newParfum = {
+                    id: generateID(),
+                    name: name,
+                    volume: volume,
+                    cost: cost,
+                    fullPrice: fullPrice,
+                    decant5Price: decant5Price || 0,
+                    decant10Price: decant10Price || 0,
+                    stock: volume // Awalnya stok sama dengan volume botol
+                };
+                
+                parfumStock.push(newParfum);
+                saveData();
+                renderParfumStock();
+                updateSalesParfumDropdown();
+                closeModal('addStockModal');
+                
+                // Reset form
+                document.getElementById('addParfumName').value = '';
+                document.getElementById('addParfumVolume').value = '100';
+                document.getElementById('addParfumCost').value = '';
+                document.getElementById('addParfumFullPrice').value = '';
+                document.getElementById('addParfumDecant5Price').value = '';
+                document.getElementById('addParfumDecant10Price').value = '';
+            }
+            
+            function updateParfumStock() {
+                const id = document.getElementById('editParfumId').value;
+                const name = document.getElementById('editParfumName').value;
+                const volume = parseFloat(document.getElementById('editParfumVolume').value);
+                const cost = parseFloat(document.getElementById('editParfumCost').value);
+                const fullPrice = parseFloat(document.getElementById('editParfumFullPrice').value);
+                const decant5Price = parseFloat(document.getElementById('editParfumDecant5Price').value);
+                const decant10Price = parseFloat(document.getElementById('editParfumDecant10Price').value);
+                const stock = parseFloat(document.getElementById('editParfumStock').value);
+                
+                if (!name || isNaN(volume) || isNaN(cost) || isNaN(fullPrice) || isNaN(stock)) {
+                    alert('Mohon lengkapi data parfum!');
+                    return;
+                }
+                
+                const index = parfumStock.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    parfumStock[index] = {
+                        id: id,
+                        name: name,
+                        volume: volume,
+                        cost: cost,
+                        fullPrice: fullPrice,
+                        decant5Price: decant5Price || 0,
+                        decant10Price: decant10Price || 0,
+                        stock: stock
+                    };
+                    
+                    saveData();
+                    renderParfumStock();
+                    updateSalesParfumDropdown();
+                    closeModal('editStockModal');
+                }
+            }
+            
+            function renderParfumStock() {
+                const tbody = document.getElementById('parfumStockBody');
+                tbody.innerHTML = '';
+                
+                parfumStock.forEach(parfum => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${parfum.id}</td>
+                        <td>${parfum.name}</td>
+                        <td>${parfum.volume} ml</td>
+                        <td>Rp ${formatNumber(parfum.cost)}</td>
+                        <td>Rp ${formatNumber(parfum.fullPrice)}</td>
+                        <td>Rp ${formatNumber(parfum.decant5Price)}</td>
+                        <td>Rp ${formatNumber(parfum.decant10Price)}</td>
+                        <td>${parfum.stock} ml</td>
+                        <td>
+                            <button onclick="showEditStockModal('${parfum.id}')">Edit</button>
+                            <button onclick="showDeleteConfirm('${parfum.id}', 'parfum')">Hapus</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+            
+            // Sales functions
+            function updateSalesParfumDropdown() {
+                const select = document.getElementById('salesParfum');
+                // Clear current options
+                select.innerHTML = '<option value="">-- Pilih Parfum --</option>';
+                
+                // Add parfums with stock > 0
+                parfumStock.forEach(parfum => {
+                    if (parfum.stock > 0) {
+                        const option = document.createElement('option');
+                        option.value = parfum.id;
+                        option.textContent = `${parfum.name} (Stok: ${parfum.stock} ml)`;
+                        select.appendChild(option);
+                    }
+                });
+            }
+            
+            function updateSalesOptions() {
+                const parfumId = document.getElementById('salesParfum').value;
+                const typeSelect = document.getElementById('salesType');
+                
+                // Reset type selection
+                typeSelect.innerHTML = '<option value="">-- Pilih Tipe --</option>';
+                document.getElementById('salesPrice').value = '';
+                document.getElementById('salesTotal').value = '';
+                
+                if (!parfumId) return;
+                
+                const parfum = parfumStock.find(p => p.id === parfumId);
+                if (parfum) {
+                    // Add "Botol Penuh" option if stock is sufficient
+                    if (parfum.stock >= parfum.volume) {
+                        const fullOption = document.createElement('option');
+                        fullOption.value = 'full';
+                        fullOption.textContent = `Botol Penuh (${parfum.volume} ml)`;
+                        typeSelect.appendChild(fullOption);
+                    }
+                    
+                    // Add decant options if prices are set and stock is sufficient
+                    if (parfum.decant5Price > 0 && parfum.stock >= 5) {
+                        const decant5Option = document.createElement('option');
+                        decant5Option.value = 'decant5';
+                        decant5Option.textContent = 'Decant 5ml';
+                        typeSelect.appendChild(decant5Option);
+                    }
+                    
+                    if (parfum.decant10Price > 0 && parfum.stock >= 10) {
+                        const decant10Option = document.createElement('option');
+                        decant10Option.value = 'decant10';
+                        decant10Option.textContent = 'Decant 10ml';
+                        typeSelect.appendChild(decant10Option);
+                    }
+                }
+            }
+            
+            function updatePriceBasedOnType() {
+                const parfumId = document.getElementById('salesParfum').value;
+                const type = document.getElementById('salesType').value;
+                const quantityInput = document.getElementById('salesQuantity');
+                
+                if (!parfumId || !type) {
+                    document.getElementById('salesPrice').value = '';
+                    document.getElementById('salesTotal').value = '';
+                    return;
+                }
+                
+                const parfum = parfumStock.find(p => p.id === parfumId);
+                if (parfum) {
+                    // Set price based on selected type
+                    let price = 0;
+                    let maxQuantity = 1;
+                    
+                    if (type === 'full') {
+                        price = parfum.fullPrice;
+                        maxQuantity = Math.floor(parfum.stock / parfum.volume);
+                    } else if (type === 'decant5') {
+                        price = parfum.decant5Price;
+                        maxQuantity = Math.floor(parfum.stock / 5);
+                    } else if (type === 'decant10') {
+                        price = parfum.decant10Price;
+                        maxQuantity = Math.floor(parfum.stock / 10);
+                    }
+                    
+                    // Update UI
+                    document.getElementById('salesPrice').value = price;
+                    quantityInput.max = maxQuantity;
+                    quantityInput.value = 1;
+                    
+                    // Calculate total
+                    calculateSalesTotal();
+                }
+            }
+            
+            function calculateSalesTotal() {
+                const price = parseFloat(document.getElementById('salesPrice').value) || 0;
+                const quantity = parseInt(document.getElementById('salesQuantity').value) || 0;
+                
+                const total = price * quantity;
+                document.getElementById('salesTotal').value = total;
+            }
+            
+            function calculateProfit(sale) {
+                const parfum = parfumStock.find(p => p.id === sale.parfumId);
+                if (!parfum) return 0;
+                
+                let costPerUnit = 0;
+                if (sale.type === 'full') {
+                    costPerUnit = parfum.cost;
+                } else if (sale.type === 'decant5') {
+                    costPerUnit = (parfum.cost / parfum.volume) * 5;
+                } else if (sale.type === 'decant10') {
+                    costPerUnit = (parfum.cost / parfum.volume) * 10;
+                }
+                
+                return sale.price * sale.quantity - costPerUnit * sale.quantity;
+            }
+            
+            function addSales() {
+                const date = document.getElementById('salesDate').value;
+                const parfumId = document.getElementById('salesParfum').value;
+                const type = document.getElementById('salesType').value;
+                const quantity = parseInt(document.getElementById('salesQuantity').value) || 0;
+                const price = parseFloat(document.getElementById('salesPrice').value) || 0;
+                const total = parseFloat(document.getElementById('salesTotal').value) || 0;
+                
+                if (!date || !parfumId || !type || quantity <= 0 || price <= 0) {
+                    alert('Mohon lengkapi data penjualan!');
+                    return;
+                }
+                
+                const parfum = parfumStock.find(p => p.id === parfumId);
+                if (!parfum) {
+                    alert('Parfum tidak ditemukan!');
+                    return;
+                }
+                
+                // Calculate volume sold
+                let volumeSold = 0;
+                if (type === 'full') {
+                    volumeSold = parfum.volume * quantity;
+                } else if (type === 'decant5') {
+                    volumeSold = 5 * quantity;
+                } else if (type === 'decant10') {
+                    volumeSold = 10 * quantity;
+                }
+                
+                // Check if sufficient stock
+                if (parfum.stock < volumeSold) {
+                    alert('Stok tidak mencukupi!');
+                    return;
+                }
+                
+                // Create sale record
+                const newSale = {
+                    id: generateID(),
+                    date: date,
+                    parfumId: parfumId,
+                    parfumName: parfum.name,
+                    type: type,
+                    quantity: quantity,
+                    price: price,
+                    total: total,
+                    volumeSold: volumeSold
+                };
+                
+                // Calculate profit
+                newSale.profit = calculateProfit(newSale);
+                
+                // Update stock
+                parfum.stock -= volumeSold;
+                
+                // Save data
+                salesHistory.push(newSale);
+                saveData();
+                
+                // Update UI
+                renderParfumStock();
+                renderSalesHistory();
+                updateSalesParfumDropdown();
+                generateReport();
+                
+                // Reset sales form
+                document.getElementById('salesType').value = '';
+                document.getElementById('salesPrice').value = '';
+                document.getElementById('salesTotal').value = '';
+                document.getElementById('salesQuantity').value = '1';
+            }
+            
+            function renderSalesHistory() {
+                const tbody = document.getElementById('salesHistoryBody');
+                tbody.innerHTML = '';
+                
+                // Sort sales by date (newest first)
+                const sortedSales = [...salesHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                sortedSales.forEach(sale => {
+                    const row = document.createElement('tr');
+                    
+                    // Format type name for display
+                    let typeName = '';
+                    if (sale.type === 'full') {
+                        typeName = 'Botol Penuh';
+                    } else if (sale.type === 'decant5') {
+                        typeName = 'Decant 5ml';
+                    } else if (sale.type === 'decant10') {
+                        typeName = 'Decant 10ml';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${sale.id}</td>
+                        <td>${formatDate(sale.date)}</td>
+                        <td>${sale.parfumName}</td>
+                        <td>${typeName}</td>
+                        <td>${sale.quantity}</td>
+                        <td>Rp ${formatNumber(sale.price)}</td>
+                        <td>Rp ${formatNumber(sale.total)}</td>
+                        <td>Rp ${formatNumber(sale.profit)}</td>
+                        <td>
+                            <button onclick="showDeleteConfirm('${sale.id}', 'sale')">Hapus</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+            
+            // Report functions
+            function generateReport() {
+                const filterType = document.getElementById('reportFilter').value;
+                let filteredSales = [...salesHistory];
+                
+                // Apply date filter
+                if (filterType !== 'all') {
+                    const today = new Date();
+                    today.setHours(23, 59, 59, 999); // End of today
+                    
+                    let startDate = new Date();
+                    if (filterType === 'today') {
+                        startDate.setHours(0, 0, 0, 0); // Start of today
+                    } else if (filterType === 'week') {
+                        startDate.setDate(today.getDate() - 7); // 7 days ago
+                    } else if (filterType === 'month') {
+                        startDate.setDate(today.getDate() - 30); // 30 days ago
+                    }
+                    
+                    filteredSales = filteredSales.filter(sale => {
+                        const saleDate = new Date(sale.date);
+                        return saleDate >= startDate && saleDate <= today;
+                    });
+                }
+                
+                // Calculate summary metrics
+                const totalSales = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+                const totalProfit = filteredSales.reduce((sum, sale) => sum + sale.profit, 0);
+                const totalCost = totalSales - totalProfit;
+                const profitMargin = totalSales > 0 ? (totalProfit / totalSales * 100).toFixed(2) : 0;
+                
+                // Update summary display
+                document.getElementById('totalSales').innerText = formatNumber(totalSales);
+                document.getElementById('totalCost').innerText = formatNumber(totalCost);
+                document.getElementById('totalProfit').innerText = formatNumber(totalProfit);
+                document.getElementById('profitMargin').innerText = profitMargin;
+                
+                // Generate report by parfum
+                generateReportByParfum(filteredSales);
+                
+                // Generate report by sale type
+                generateReportByType(filteredSales);
+            }
+            
+            function generateReportByParfum(filteredSales) {
+                const tbody = document.getElementById('reportByParfumBody');
+                tbody.innerHTML = '';
+                
+                // Group sales by parfum
+                const parfumMap = new Map();
+                
+                filteredSales.forEach(sale => {
+                    if (!parfumMap.has(sale.parfumId)) {
+                        parfumMap.set(sale.parfumId, {
+                            name: sale.parfumName,
+                            totalSales: 0,
+                            totalProfit: 0
+                        });
+                    }
+                    
+                    const parfumData = parfumMap.get(sale.parfumId);
+                    parfumData.totalSales += sale.total;
+                    parfumData.totalProfit += sale.profit;
+                });
+                
+                // Sort by total sales (highest first)
+                const sortedParfums = Array.from(parfumMap.values())
+                    .sort((a, b) => b.totalSales - a.totalSales);
+                
+                // Generate table rows
+                sortedParfums.forEach(parfumData => {
+                    const row = document.createElement('tr');
+                    
+                    const totalCost = parfumData.totalSales - parfumData.totalProfit;
+                    const margin = parfumData.totalSales > 0 ? 
+                        (parfumData.totalProfit / parfumData.totalSales * 100).toFixed(2) : 0;
+                    
+                    row.innerHTML = `
+                        <td>${parfumData.name}</td>
+                        <td>Rp ${formatNumber(parfumData.totalSales)}</td>
+                        <td>Rp ${formatNumber(totalCost)}</td>
+                        <td>Rp ${formatNumber(parfumData.totalProfit)}</td>
+                        <td>${margin}%</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+            
+            function generateReportByType(filteredSales) {
+                const tbody = document.getElementById('reportByTypeBody');
+                tbody.innerHTML = '';
+                
+                // Group sales by type
+                const typeMap = new Map();
+                typeMap.set('full', { name: 'Botol Penuh', count: 0, totalSales: 0, totalProfit: 0 });
+                typeMap.set('decant5', { name: 'Decant 5ml', count: 0, totalSales: 0, totalProfit: 0 });
+                typeMap.set('decant10', { name: 'Decant 10ml', count: 0, totalSales: 0, totalProfit: 0 });
+                
+                filteredSales.forEach(sale => {
+                    if (typeMap.has(sale.type)) {
+                        const typeData = typeMap.get(sale.type);
+                        typeData.count++;
+                        typeData.totalSales += sale.total;
+                        typeData.totalProfit += sale.profit;
+                    }
+                });
+                
+                // Generate table rows
+                typeMap.forEach(typeData => {
+                    if (typeData.count > 0) { // Only show types with sales
+                        const row = document.createElement('tr');
+                        
+                        const totalCost = typeData.totalSales - typeData.totalProfit;
+                        const margin = typeData.totalSales > 0 ? 
+                            (typeData.totalProfit / typeData.totalSales * 100).toFixed(2) : 0;
+                        
+                        row.innerHTML = `
+                            <td>${typeData.name}</td>
+                            <td>${typeData.count}</td>
+                            <td>Rp ${formatNumber(typeData.totalSales)}</td>
+                            <td>Rp ${formatNumber(totalCost)}</td>
+                            <td>Rp ${formatNumber(typeData.totalProfit)}</td>
+                            <td>${margin}%</td>
+                        `;
+                        
+                        tbody.appendChild(row);
+                    }
+                });
+            }
+            
+            // Delete functions
+            function confirmDelete() {
+                const id = document.getElementById('deleteItemId').value;
+                const type = document.getElementById('deleteItemType').value;
+                
+                if (type === 'parfum') {
+                    // Check if parfum has sales records
+                    const hasSales = salesHistory.some(sale => sale.parfumId === id);
+                    if (hasSales) {
+                        alert('Tidak dapat menghapus parfum karena memiliki riwayat penjualan!');
+                        closeModal('deleteConfirmModal');
+                        return;
+                    }
+                    
+                    // Delete parfum
+                    parfumStock = parfumStock.filter(p => p.id !== id);
+                } else if (type === 'sale') {
+                    // Get sale details before deleting
+                    const sale = salesHistory.find(s => s.id === id);
+                    if (sale) {
+                        // Return volume to stock
+                        const parfum = parfumStock.find(p => p.id === sale.parfumId);
+                        if (parfum) {
+                            parfum.stock += sale.volumeSold;
+                        }
+                    }
+                    
+                    // Delete sale
+                    salesHistory = salesHistory.filter(s => s.id !== id);
+                }
+                
+                saveData();
+                renderParfumStock();
+                renderSalesHistory();
+                updateSalesParfumDropdown();
+                generateReport();
+                closeModal('deleteConfirmModal');
+            }
+            
+            // Utility functions
+            function generateID() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+            }
+            
+            function formatNumber(number) {
+                return number.toLocaleString('id-ID');
+            }
+            
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID');
+            }
+        </script>
+    </div>
+</body>
+</html>
